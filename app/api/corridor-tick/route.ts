@@ -89,7 +89,7 @@ async function saveEntity(): Promise<void> {
   if (!entity || !redis) return;
 
   const now = Date.now();
-  if (now - lastSaveTime < 10000) return;
+  if (now - lastSaveTime < 3000) return; // save every 3 seconds
   lastSaveTime = now;
 
   try {

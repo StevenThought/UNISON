@@ -705,7 +705,8 @@ export default function CorridorView() {
     let targetAngle = 0;
     let angleSmoothing = true;
 
-    // Load MIKE's current position from server
+    // Load MIKE's position from server BEFORE starting — everyone sees the same MIKE
+    let serverLoaded = false;
     fetch("/api/corridor-tick")
       .then(r => r.json())
       .then(data => {
@@ -720,10 +721,11 @@ export default function CorridorView() {
             planeX = -Math.sin(data.angle) * 0.66;
             planeY = Math.cos(data.angle) * 0.66;
           }
-          console.log(`[MIKE] Loaded position from server: (${posX.toFixed(1)}, ${posY.toFixed(1)}) tick ${data.ticks}`);
+          console.log(`[MIKE] Loaded position: (${posX.toFixed(1)}, ${posY.toFixed(1)}) tick ${data.ticks}`);
         }
+        serverLoaded = true;
       })
-      .catch(() => { /* start fresh if server unavailable */ });
+      .catch(() => { serverLoaded = true; /* start fresh if unavailable */ });
 
     // ── Smooth walking system ──
     let walkSpeed = 0; // current speed (accelerates/decelerates)
@@ -2708,7 +2710,16 @@ export default function CorridorView() {
       requestAnimationFrame(render);
     }
 
-    requestAnimationFrame(render);
+    // Wait for server position before starting render loop
+    function waitAndStart() {
+      if (serverLoaded) {
+        requestAnimationFrame(render);
+      } else {
+        setTimeout(waitAndStart, 50);
+      }
+    }
+    waitAndStart();
+
     return () => {
       running = false;
       canvas.removeEventListener('click', startAudio);
