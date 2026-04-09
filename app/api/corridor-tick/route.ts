@@ -256,7 +256,19 @@ function findNearbyNote(x: number, y: number): { key: string; text: string } | n
 }
 
 // GET — new viewers load MIKE's current state
-export async function GET() {
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+
+  // Reset MIKE — clear all state
+  if (url.searchParams.get("reset") === "true") {
+    entity = { ...DEFAULT_STATE };
+    entityVisitedSet = new Set();
+    if (redis) {
+      try { await redis.del(REDIS_KEY); } catch {}
+    }
+    return NextResponse.json({ reset: true, message: "MIKE reset to start" });
+  }
+
   const state = await loadEntity();
   return NextResponse.json({
     posX: state.posX,
