@@ -14,6 +14,8 @@ if (redis) {
 }
 
 const REDIS_KEY = "mike:state";
+const VIEWERS_KEY = "mike:viewers";
+const START_TIME_KEY = "mike:startTime";
 
 interface EntityState {
   memories: string[];
@@ -265,11 +267,14 @@ export async function GET(req: Request) {
     entityVisitedSet = new Set();
     if (redis) {
       try { await redis.del(REDIS_KEY); } catch {}
+      try { await redis.set(START_TIME_KEY, Date.now().toString()); } catch {}
     }
     return NextResponse.json({ reset: true, message: "MIKE reset to start" });
   }
 
   const state = await loadEntity();
+  const viewers = redis ? (await redis.get(VIEWERS_KEY)) || "0" : "0";
+  const startTime = redis ? (await redis.get(START_TIME_KEY)) || Date.now().toString() : Date.now().toString();
   return NextResponse.json({
     posX: state.posX,
     posY: state.posY,
@@ -278,6 +283,8 @@ export async function GET(req: Request) {
     lastThought: state.lastThought,
     lastSpeech: state.lastSpeech,
     notesRead: state.notesRead,
+    viewers: parseInt(viewers as string, 10),
+    startTime: parseInt(startTime as string, 10),
   });
 }
 
@@ -477,4 +484,23 @@ What do you do?`;
       error: e instanceof Error ? e.message : "Unknown error",
     });
   }
+}
+
+export async function PUT(req: Request) {
+  const body = await req.json().catch(() => ({}));
+
+  if (body.action === "join") {
+    if (redis) await redis.incr(VIEWERS_KEY);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (body.action === "leave") {
+    if (redis) {
+      const count = await redis.decr(VIEWERS_KEY);
+      if (count < 0) await redis.set(VIEWERS_KEY, "0");
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 }

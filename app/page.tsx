@@ -320,6 +320,9 @@ export default function CorridorView() {
   const [showLore, setShowLore] = useState(false);
   const [audioStarted, setAudioStarted] = useState(false);
   const [noteDisplay, setNoteDisplay] = useState<{ text: string; type: 'found' | 'written' } | null>(null);
+  const [viewers, setViewers] = useState(0);
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [elapsedStr, setElapsedStr] = useState("");
 
   // Refs for communicating between render loop and AI tick
   const posRef = useRef({ x: 5.5, y: 5.5 });
@@ -443,6 +446,69 @@ export default function CorridorView() {
       if (aiTickRef.current) clearInterval(aiTickRef.current);
     };
   }, [doAiTick]);
+
+  // Viewer counter and exploration timer
+  useEffect(() => {
+    // Join on load
+    fetch("/api/corridor-tick", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "join" }),
+    }).catch(() => {});
+
+    // Leave on unload
+    const handleUnload = () => {
+      fetch("/api/corridor-tick", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "leave" }),
+        keepalive: true,
+      }).catch(() => {});
+    };
+    window.addEventListener("beforeunload", handleUnload);
+
+    // Fetch viewers and startTime periodically
+    const fetchViewers = () => {
+      fetch("/api/corridor-tick")
+        .then(r => r.json())
+        .then(data => {
+          if (typeof data.viewers === "number") setViewers(data.viewers);
+          if (typeof data.startTime === "number") setStartTime(data.startTime);
+        })
+        .catch(() => {});
+    };
+    fetchViewers();
+    const viewerInterval = setInterval(fetchViewers, 15000);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleUnload);
+      clearInterval(viewerInterval);
+      // Send leave on cleanup (e.g. SPA navigation)
+      fetch("/api/corridor-tick", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "leave" }),
+      }).catch(() => {});
+    };
+  }, []);
+
+  // Timer display — update every second
+  useEffect(() => {
+    if (startTime === null) return;
+    const formatElapsed = () => {
+      const elapsed = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
+      const days = Math.floor(elapsed / 86400);
+      const hours = Math.floor((elapsed % 86400) / 3600);
+      const mins = Math.floor((elapsed % 3600) / 60);
+      const secs = elapsed % 60;
+      if (days > 0) return `${days}d ${hours}h`;
+      if (hours > 0) return `${hours}h ${String(mins).padStart(2, "0")}m`;
+      return `${mins}m ${String(secs).padStart(2, "0")}s`;
+    };
+    setElapsedStr(formatElapsed());
+    const timerInterval = setInterval(() => setElapsedStr(formatElapsed()), 1000);
+    return () => clearInterval(timerInterval);
+  }, [startTime]);
 
   useEffect(() => {
     // Lock body scroll for raycaster page
@@ -2665,6 +2731,12 @@ export default function CorridorView() {
       }}>
         <span style={{ color: 'rgba(100, 140, 180, 0.3)', fontSize: '10px', letterSpacing: '0.15em' }}>
           ENTITY: MIKE
+        </span>
+        <span style={{ color: 'rgba(100, 140, 180, 0.2)', fontSize: '10px', letterSpacing: '0.1em', marginLeft: '12px' }}>
+          · 👁 {viewers} watching
+        </span>
+        <span style={{ color: 'rgba(100, 140, 180, 0.2)', fontSize: '10px', letterSpacing: '0.1em', marginLeft: '8px' }}>
+          · EXPLORING: {elapsedStr || "—"}
         </span>
         <span style={{
           position: 'absolute', left: '50%', transform: 'translateX(-50%)',
