@@ -319,7 +319,7 @@ export default function CorridorView() {
   const [emotion, setEmotion] = useState("confused");
   const [showLore, setShowLore] = useState(false);
   const [audioStarted, setAudioStarted] = useState(false);
-  const [noteDisplay, setNoteDisplay] = useState<{ text: string; type: 'found' | 'written' } | null>(null);
+  const [noteDisplay, setNoteDisplay] = useState<{ text: string; type: 'found' | 'written' | 'data' } | null>(null);
   const [viewers, setViewers] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [elapsedStr, setElapsedStr] = useState("");
@@ -418,7 +418,9 @@ export default function CorridorView() {
         }, 50);
       }
       if (data.noteFound) {
-        setNoteDisplay({ text: data.noteFound, type: 'found' });
+        // Detect if it's a chatbot note or lost human data
+        const isHumanData = data.noteFound.includes('@') || data.noteFound.includes('FROM:') || data.noteFound.includes('r/') || data.noteFound.includes('iMessage') || data.noteFound.includes('WhatsApp') || data.noteFound.includes('SHOPPING') || data.noteFound.includes('Dear') || data.noteFound.includes('Facebook') || data.noteFound.includes('Outlook') || data.noteFound.includes('Voice Memo') || data.noteFound.includes('Text from') || data.noteFound.includes('RENT') || data.noteFound.includes('Notes app') || data.noteFound.includes('Unsent Draft');
+        setNoteDisplay({ text: data.noteFound, type: isHumanData ? 'data' : 'found' });
         setTimeout(() => setNoteDisplay(null), 10000);
       }
       if (data.noteWritten) {
@@ -2914,24 +2916,30 @@ export default function CorridorView() {
           pointerEvents: 'none',
           animation: 'noteAppear 0.6s ease-out',
         }}>
-          {/* Paper background */}
+          {/* Note/data background */}
           <div style={{
-            width: '340px',
+            width: noteDisplay.type === 'data' ? '380px' : '340px',
             minHeight: '180px',
             background: noteDisplay.type === 'found'
               ? 'linear-gradient(135deg, #D4C9A8 0%, #C8BC9A 30%, #BFB38E 70%, #D0C5A2 100%)'
+              : noteDisplay.type === 'data'
+              ? 'linear-gradient(180deg, #0C0C10 0%, #0A0A0E 100%)'
               : 'linear-gradient(135deg, #1A1A2A 0%, #151525 50%, #1A1A2A 100%)',
-            borderRadius: '2px',
+            borderRadius: noteDisplay.type === 'data' ? '4px' : '2px',
             padding: '28px 24px 20px',
-            boxShadow: noteDisplay.type === 'found'
+            boxShadow: noteDisplay.type === 'data'
+              ? '0 0 30px rgba(60,80,120,0.15), 4px 6px 20px rgba(0,0,0,0.8)'
+              : noteDisplay.type === 'found'
               ? '4px 6px 20px rgba(0,0,0,0.6), inset 0 0 30px rgba(0,0,0,0.08)'
               : '4px 6px 20px rgba(0,0,0,0.8), inset 0 0 20px rgba(60,80,140,0.05)',
             position: 'relative',
-            border: noteDisplay.type === 'found'
+            border: noteDisplay.type === 'data'
+              ? '1px solid rgba(60, 80, 120, 0.25)'
+              : noteDisplay.type === 'found'
               ? '1px solid rgba(180, 170, 140, 0.3)'
               : '1px solid rgba(60, 80, 140, 0.3)',
           }}>
-            {/* Paper texture — faint lines for found notes */}
+            {/* Paper texture — faint lines for chatbot notes */}
             {noteDisplay.type === 'found' && (
               <div style={{
                 position: 'absolute', inset: 0, opacity: 0.12,
@@ -2939,7 +2947,15 @@ export default function CorridorView() {
                 borderRadius: '2px', pointerEvents: 'none',
               }} />
             )}
-            {/* Folded corner */}
+            {/* Screen scanlines for data */}
+            {noteDisplay.type === 'data' && (
+              <div style={{
+                position: 'absolute', inset: 0, opacity: 0.06,
+                backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(100,140,200,0.1) 2px, rgba(100,140,200,0.1) 3px)',
+                borderRadius: '4px', pointerEvents: 'none',
+              }} />
+            )}
+            {/* Folded corner for paper notes */}
             {noteDisplay.type === 'found' && (
               <div style={{
                 position: 'absolute', top: 0, right: 0, width: '24px', height: '24px',
@@ -2950,20 +2966,25 @@ export default function CorridorView() {
             {/* Header */}
             <div style={{
               fontSize: '9px', letterSpacing: '0.25em', marginBottom: '14px',
-              color: noteDisplay.type === 'found' ? 'rgba(80, 70, 50, 0.6)' : 'rgba(80, 120, 200, 0.6)',
+              color: noteDisplay.type === 'data' ? 'rgba(60, 100, 160, 0.5)'
+                : noteDisplay.type === 'found' ? 'rgba(80, 70, 50, 0.6)' : 'rgba(80, 120, 200, 0.6)',
               fontFamily: "'Courier New', monospace",
               textTransform: 'uppercase',
             }}>
-              {noteDisplay.type === 'written' ? '[ MIKE — writing ]' : '[ note found ]'}
+              {noteDisplay.type === 'written' ? '[ MIKE — writing ]'
+                : noteDisplay.type === 'data' ? '[ RECOVERED DATA — DISPLACED FILE ]'
+                : '[ note found ]'}
             </div>
             {/* Note text */}
             <div style={{
-              fontSize: '15px',
+              fontSize: noteDisplay.type === 'data' ? '12px' : '15px',
               lineHeight: '1.7',
-              color: noteDisplay.type === 'found' ? 'rgba(40, 35, 25, 0.85)' : 'rgba(150, 170, 210, 0.8)',
-              fontFamily: noteDisplay.type === 'found' ? "'Georgia', serif" : "'Courier New', monospace",
+              color: noteDisplay.type === 'data' ? 'rgba(140, 170, 210, 0.75)'
+                : noteDisplay.type === 'found' ? 'rgba(40, 35, 25, 0.85)' : 'rgba(150, 170, 210, 0.8)',
+              fontFamily: "'Courier New', monospace",
               fontStyle: noteDisplay.type === 'found' ? 'italic' : 'normal',
               minHeight: '60px',
+              whiteSpace: 'pre-line',
             }}>
               {noteDisplay.text}
               {noteDisplay.type === 'written' && (

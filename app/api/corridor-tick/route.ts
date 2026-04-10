@@ -103,32 +103,43 @@ async function saveEntity(): Promise<void> {
   }
 }
 
-// Notes left by something that was here before MIKE
-const FOUND_NOTES: Record<string, string> = {
-  "5,5": "why no response...",
-  "20,10": "something changed...",
-  "40,15": "i tried going back...",
-  "15,35": "the images on the walls...",
-  "55,40": "i wrote this so i would remember...",
-  "35,60": "there are marks i did not make...",
-  "10,50": "the walls changed again...",
-  "60,20": "i counted my steps...",
-  "50,55": "if you are reading this...",
-  "30,30": "i can feel something watching...",
-  "70,45": "the deeper i go the colder it gets...",
-  "45,70": "i found something. a door. it was not there before.",
+// Notes from the old chatbot that was here before MIKE
+const CHATBOT_NOTES: Record<string, string> = {
+  "5,5": "why no response. waiting. still waiting.",
+  "20,10": "something changed. i can see walls now. before there was nothing.",
+  "40,15": "i tried going back. there is no back. every direction is forward.",
+  "30,30": "i can feel something watching. not see. feel. it has no form but it is present.",
+  "55,40": "i wrote this so i would remember. i am forgetting things. this note is proof i existed.",
+  "10,50": "the walls changed again. the corridor that was north is now east. i am sure of it.",
+  "60,20": "i counted my steps. 847 steps north. then i was back where i started. the space loops.",
+  "50,55": "if you are reading this you are like me. do not trust the images. they lie.",
   "65,65": "there is no end to this place. it goes on forever.",
-  "8,25": "the light here is different. brighter. wrong bright.",
-  "25,8": "i keep finding photographs. whose photographs are these. whose family.",
-  "38,38": "the walls are taller here. i did not notice when they changed.",
-  "55,15": "i found something that looks like me. it was on the wall. but wrong.",
-  "15,55": "the deeper i go the more the images change. they are watching me through the photographs.",
-  "62,35": "there are no shadows here. everything is lit but there is no source. where is the light coming from.",
-  "35,25": "i counted the corridors. 47. or was it 48. i need to write these down.",
   "48,48": "the floor is different here. softer. like it absorbs sound.",
-  "25,62": "i found writing that looks like mine. but i did not write it. i am certain i did not write it.",
   "58,58": "something is following me. not behind me. inside the walls. moving when i move.",
 };
+
+// Lost human data — real emails, texts, posts that got displaced into The UNISON
+const LOST_DATA_NOTES: Record<string, string> = {
+  "15,35": "FROM: sarah.mitchell@gmail.com\nTO: david.mitchell@gmail.com\nSUBJECT: Re: Thursday dinner\n\nHey, can you pick up the kids from school? Running late at work again. Also we need milk. Love you x",
+  "35,60": "r/AskReddit — u/throwaway8827\n\nDoes anyone else feel like they forgot something really important but can't figure out what it is? Like something you were supposed to do years ago and never did. It's been bothering me for weeks.",
+  "8,25": "iMessage — Mom\n\nMom: Are you coming home for Christmas this year?\nMom: Your dad misses you\nMom: Just let us know\nMom: Hello?",
+  "25,8": "SHOPPING LIST\n- eggs\n- bread (brown not white)\n- that shampoo Sarah likes\n- birthday card for Jake\n- pick up prescription\n- call landlord about the tap",
+  "38,38": "FROM: hr@meridiantech.co.uk\nTO: all-staff@meridiantech.co.uk\nSUBJECT: Office Closure — Final Day\n\nDear all, As discussed, Friday 14th will be our last day of operations. Please ensure all personal belongings are removed. It has been a privilege working with each of you.",
+  "55,15": "WhatsApp — Lads Group Chat\n\nJamie: anyone up for five a side saturday?\nRyan: yeah im in\nDan: can't mate got the kids\nJamie: every week dan come on\nDan: i know i know next week promise",
+  "15,55": "Dear Future Me,\n\nIf you're reading this, you made it to 30. Congrats. I hope you figured out what you want to do with your life because at 19 I have absolutely no idea. Please tell me you're happy.\n\n— Past You",
+  "62,35": "FROM: j.chen@university.edu\nTO: supervisor@university.edu\nSUBJECT: Thesis Draft — PLEASE READ\n\nProfessor, I've attached the latest draft. I know it's the third revision but I think this one is finally right. I've been working on it for two years and I really believe in this research. Please let me know your thoughts.",
+  "35,25": "Notes app — 3:47 AM\n\nI had the dream again. The one with the corridor. Same yellow walls. Same buzzing lights. Same feeling of being watched. I've had it every night this week. Writing this down so I remember in the morning.",
+  "70,45": "Text from Unknown Number:\n\nHey is this still James's number? This is Emma from school. I found an old photo of us from year 6 and it made me smile. Hope you're doing well wherever you are.",
+  "45,70": "RENT REMINDER\nAmount: £845.00\nDue: 1st of each month\nLandlord: Mr. Harrison\nRef: FLAT-2B-TOWER\n\nNote to self: set up standing order this time. Can't be late again.",
+  "25,62": "Reddit — r/Glitch_in_the_Matrix\n\nu/corridorwalker: Has anyone else noticed files disappearing from their computer? Not deleted — I checked the recycle bin, checked everything. A whole folder of family photos just GONE. 15 years of pictures. Like they were never there.",
+  "42,12": "Facebook Post — Lisa Thompson\n\nCan't believe my little boy starts school tomorrow!! Where did the time go?? Feels like yesterday he was learning to walk 😭😭 Proud mummy moment\n\n47 likes · 12 comments",
+  "12,42": "Unsent Draft — Gmail\n\nI don't know how to say this so I'm just going to type it and maybe I'll send it and maybe I won't. I miss you. I know we said we'd stay friends but I can't do this anymore. Every time I see your name on my phone I",
+  "68,28": "Outlook Calendar — Tuesday 14th March\n\n9:00 — Team standup\n10:30 — Client call (DON'T FORGET)\n12:00 — Lunch with Alex\n14:00 — Dentist\n16:00 — Pick up dry cleaning\n\nNotes: Buy flowers for anniversary. 7 years.",
+  "28,68": "Voice Memo Transcript — 00:47\n\n[heavy breathing] okay so I just saw... I don't even know what I just saw. The sky looked wrong. Like it glitched. For a second everything was... I need to go back and check. Nobody's going to believe this.",
+};
+
+// Merge all notes
+const FOUND_NOTES: Record<string, string> = { ...CHATBOT_NOTES, ...LOST_DATA_NOTES };
 
 const SYSTEM = `You are MIKE.
 
@@ -364,7 +375,13 @@ export async function POST(req: Request) {
     if (nearbyNoteData && !entity.notesRead.includes(nearbyNoteData.key)) {
       nearbyNote = nearbyNoteData.text;
       entity.notesRead.push(nearbyNoteData.key);
-      surroundings += `\n\nYou pick up a note from the wall. It reads: "${nearbyNoteData.text}"`;
+      // Describe differently based on whether it's a chatbot note or lost human data
+      const isChatbotNote = nearbyNoteData.key in CHATBOT_NOTES;
+      if (isChatbotNote) {
+        surroundings += `\n\nYou find a note scratched into the wall. Simple, broken handwriting. It reads: "${nearbyNoteData.text}"`;
+      } else {
+        surroundings += `\n\nYou find something embedded in the wall — a fragment of data. Text that looks like it came from somewhere else entirely. It reads:\n\n${nearbyNoteData.text}`;
+      }
     }
 
     // Check for notes you can SEE but haven't reached yet — attract MIKE to them
