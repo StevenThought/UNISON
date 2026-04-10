@@ -442,8 +442,20 @@ export default function CorridorView() {
     // Start AI tick interval
     doAiTick(); // First tick immediately
     aiTickRef.current = setInterval(doAiTick, 4000);
+
+    // Position sync — save MIKE's position to server every 2 seconds
+    const syncInterval = setInterval(() => {
+      const { x, y } = posRef.current;
+      fetch("/api/corridor-tick", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync", posX: x, posY: y, angle: angleRef.current }),
+      }).catch(() => {});
+    }, 2000);
+
     return () => {
       if (aiTickRef.current) clearInterval(aiTickRef.current);
+      clearInterval(syncInterval);
     };
   }, [doAiTick]);
 

@@ -499,6 +499,22 @@ What do you do?`;
 export async function PUT(req: Request) {
   const body = await req.json().catch(() => ({}));
 
+  // Position sync — client sends current position frequently
+  if (body.action === "sync" && body.posX !== undefined) {
+    const state = await loadEntity();
+    state.posX = body.posX;
+    state.posY = body.posY;
+    state.angle = body.angle ?? state.angle;
+    // Force save immediately
+    if (redis) {
+      try {
+        const toSave = { ...state, placesVisited: Array.from(entityVisitedSet).slice(-300) };
+        await redis.set(REDIS_KEY, JSON.stringify(toSave));
+      } catch {}
+    }
+    return NextResponse.json({ ok: true });
+  }
+
   if (body.action === "join") {
     if (redis) await redis.incr(VIEWERS_KEY);
     return NextResponse.json({ ok: true });
