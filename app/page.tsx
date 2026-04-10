@@ -232,15 +232,15 @@ function describeSurroundings(x: number, y: number): { text: string; directions:
         // Check what kind of wall decoration using same hash as renderer
         const wh = wallHash(cx, cy, 0);
         const decorRoll = wh % 100;
-        if (decorRoll < 22) nearbyFeatures.push("a faded, distorted photograph on a nearby wall");
-        else if (decorRoll < 34) {
+        if (decorRoll < 30) nearbyFeatures.push("a faded, distorted photograph on a nearby wall");
+        else if (decorRoll < 45) {
           const words = ["WHY", "HELP", "EXIT", "NO", "WAITING", "RUN", "404", "NULL", "???",
             "do not trust the", "they were here bef", "something watches", "no exit found",
             "day 12 still here", "the images change"];
           nearbyFeatures.push(`scratched text on the wall reading "${words[wh % words.length]}"`);
         }
-        else if (decorRoll < 41) nearbyFeatures.push("a child's crayon drawing on the wall");
-        else if (decorRoll < 51) nearbyFeatures.push("a dark stain seeping down the wall");
+        else if (decorRoll < 53) nearbyFeatures.push("a child's crayon drawing on the wall");
+        else if (decorRoll < 63) nearbyFeatures.push("a dark stain seeping down the wall");
       }
       if (nearbyFeatures.length >= 2) break;
     }
@@ -1916,10 +1916,15 @@ export default function CorridorView() {
       const camX = smoothCamX;
       const camY = smoothCamY;
 
-      // ── Ceiling ── gradient from dark brick color at horizon to darker above
+      // ── Ceiling ── gradient from dark above to fog color at horizon, shifts with depth
+      const ceilDepthDist = Math.sqrt((posX - 5.5) ** 2 + (posY - 5.5) ** 2);
+      const ceilDF = Math.min(1, ceilDepthDist / 50);
+      const ceilFogR = ceilDF < 0.4 ? 26 : ceilDF < 0.7 ? 35 : 20;
+      const ceilFogG = ceilDF < 0.4 ? 18 : ceilDF < 0.7 ? 15 : 18;
+      const ceilFogB = ceilDF < 0.4 ? 16 : ceilDF < 0.7 ? 15 : 30;
       const ceilGrad = ctx.createLinearGradient(0, 0, 0, h / 2);
       ceilGrad.addColorStop(0, "#0C0C0E");
-      ceilGrad.addColorStop(1, "#1A1210"); // matches fog color at horizon
+      ceilGrad.addColorStop(1, `rgb(${ceilFogR},${ceilFogG},${ceilFogB})`);
       ctx.fillStyle = ceilGrad;
       ctx.fillRect(0, 0, w, h / 2);
 
@@ -1958,16 +1963,29 @@ export default function CorridorView() {
         }
       }
 
-      // ── Floor ── gradient from dark brick color at horizon to slightly lighter
+      // ── Floor ── gradient shifts with depth — warm near spawn, cold blue-grey at max depth
+      const floorDepthFromSpawn = Math.sqrt((posX - 5.5) ** 2 + (posY - 5.5) ** 2);
+      const floorDepthFactor = Math.min(1, floorDepthFromSpawn / 50);
+      // Floor color channels — near spawn: normal, deep: cold blue-grey
+      const floorTintR = floorDepthFactor > 0.6 ? 0.6 : 1.0;
+      const floorTintG = floorDepthFactor > 0.6 ? 0.7 : 1.0;
+      const floorTintB = floorDepthFactor > 0.6 ? 1.2 : 1.0;
+      // Compute tinted hex colors for the gradient
+      const floorHorizonR = Math.round(26 * floorTintR);
+      const floorHorizonG = Math.round(18 * floorTintG);
+      const floorHorizonB = Math.min(255, Math.round(16 * floorTintB));
+      const floorBottomR = Math.round(37 * floorTintR);
+      const floorBottomG = Math.round(32 * floorTintG);
+      const floorBottomB = Math.min(255, Math.round(40 * floorTintB));
       const floorGrad = ctx.createLinearGradient(0, h / 2, 0, h);
-      floorGrad.addColorStop(0, "#1A1210"); // matches fog color at horizon
-      floorGrad.addColorStop(1, "#252028");
+      floorGrad.addColorStop(0, `rgb(${floorHorizonR},${floorHorizonG},${floorHorizonB})`);
+      floorGrad.addColorStop(1, `rgb(${floorBottomR},${floorBottomG},${floorBottomB})`);
       ctx.fillStyle = floorGrad;
       ctx.fillRect(0, h / 2, w, h / 2);
 
       // ── Floor variety — position-based color shifts and tile seams ──
       {
-        const distFromSpawnFloor = Math.sqrt((posX - 5.5) * (posX - 5.5) + (posY - 5.5) * (posY - 5.5));
+        const distFromSpawnFloor = floorDepthFromSpawn;
         const coldShift = Math.min(1, distFromSpawnFloor / 40); // 0 at spawn, 1 far away
 
         // Draw floor tile seams and color variation using perspective rows
@@ -2110,7 +2128,11 @@ export default function CorridorView() {
         // Store in z-buffer for sprite occlusion
         zBuffer[Math.floor(x / stripWidth)] = perpDist;
 
-        const lineHeight = Math.floor(h / perpDist);
+        // Depth from spawn — walls get taller the deeper MIKE goes
+        const depthFromSpawn = Math.sqrt((posX - 5.5) ** 2 + (posY - 5.5) ** 2);
+        const depthFactor = Math.min(1, depthFromSpawn / 50); // 0 at spawn, 1 at 50+ tiles out
+        const wallScale = 1.0 + depthFactor * 0.6; // walls get up to 60% taller deeper in
+        const lineHeight = Math.floor((h / perpDist) * wallScale);
         let drawStart = Math.floor(-lineHeight / 2 + h / 2 + bob);
         let drawEnd = Math.floor(lineHeight / 2 + h / 2 + bob);
         if (drawStart < 0) drawStart = 0;
@@ -2122,31 +2144,34 @@ export default function CorridorView() {
         else wallX = camX + perpDist * rayDirX;
         wallX -= Math.floor(wallX);
 
-        // Distance fog — fade to dark brick color (#1A1210) not black
+        // Distance fog — color shifts with depth from spawn
         const dist = Math.min(perpDist, 16);
         const fogMult = Math.max(0.15, 1 - dist / 16);
-        const fogR = 26, fogG = 18, fogB = 16; // #1A1210
+        const fogR = depthFactor < 0.4 ? 26 : depthFactor < 0.7 ? 35 : 20;
+        const fogG = depthFactor < 0.4 ? 18 : depthFactor < 0.7 ? 15 : 18;
+        const fogB = depthFactor < 0.4 ? 16 : depthFactor < 0.7 ? 15 : 30;
 
         // Select wall texture based on position hash
-        // Mostly standard textures (0-3), with rare game-era textures (4-6)
+        // Game-era textures increase deeper in — they're the foundation of The UNISON
         const texHash = ((mapX * 73 + mapY * 137) >>> 0);
         const texRoll = texHash % 100;
+        const gameTexThreshold = depthFactor > 0.5 ? 30 : 18; // 30% game textures deep, 18% normal
         let textureIndex: number;
-        if (texRoll < 8) textureIndex = 4;       // 8% Wolfenstein stone
-        else if (texRoll < 14) textureIndex = 5;  // 6% DOOM metal
-        else if (texRoll < 18) textureIndex = 6;  // 4% Catacomb purple
-        else textureIndex = texHash % 4;           // 82% standard textures
+        if (texRoll < Math.floor(gameTexThreshold * 0.44)) textureIndex = 4;       // Wolfenstein stone
+        else if (texRoll < Math.floor(gameTexThreshold * 0.78)) textureIndex = 5;  // DOOM metal
+        else if (texRoll < gameTexThreshold) textureIndex = 6;                      // Catacomb purple
+        else textureIndex = texHash % 4;           // standard textures
         const currentWallTexture = wallTextures[textureIndex];
 
         // Determine wall decoration type based on hash
         const wh = wallHash(mapX, mapY, side);
         const decorRoll = wh % 100;
-        // 0-21: photo (22%), 22-33: scratched text (12%), 34-40: kids drawing (7%), 41-50: stain, 51-56: glitch, 57-99: plain
-        const hasImage = imagesReady && decorRoll < 22;
-        const hasScratchText = decorRoll >= 22 && decorRoll < 34;
-        const hasKidsDrawing = decorRoll >= 34 && decorRoll < 41;
-        const hasStain = decorRoll >= 41 && decorRoll < 51;
-        const hasGlitch = decorRoll >= 51 && decorRoll < 57;
+        // 0-29: photo (30%), 30-44: scratched text (15%), 45-52: kids drawing (8%), 53-62: stain, 63-68: glitch, 69-99: plain
+        const hasImage = imagesReady && decorRoll < 30;
+        const hasScratchText = decorRoll >= 30 && decorRoll < 45;
+        const hasKidsDrawing = decorRoll >= 45 && decorRoll < 53;
+        const hasStain = decorRoll >= 53 && decorRoll < 63;
+        const hasGlitch = decorRoll >= 63 && decorRoll < 69;
         const imgIdx = hasImage ? (wh % distortedTextures.length) : -1;
         const imgTex = hasImage && imgIdx >= 0 ? distortedTextures[imgIdx] : null;
 
@@ -2199,9 +2224,21 @@ export default function CorridorView() {
               texPos >= borderTop && texPos <= borderBot) {
             if (wallX >= imgLeft && wallX <= imgRight &&
                 texPos >= imgTop && texPos <= imgBot) {
-              const imgU = (wallX - imgLeft) / (imgRight - imgLeft);
+              let imgU = (wallX - imgLeft) / (imgRight - imgLeft);
               const imgV = (texPos - imgTop) / (imgBot - imgTop);
+              // Depth-based image distortion — photos look increasingly WRONG deeper in
+              if (depthFactor > 0.5) {
+                imgU += Math.sin(imgV * 12 + now * 0.001) * (depthFactor - 0.5) * 0.08;
+                imgU = Math.max(0, Math.min(1, imgU));
+              }
               [tr, tg, tb] = sampleTexture(imgTex, imgU, imgV);
+              // At depth > 0.7: occasionally invert colors
+              if (depthFactor > 0.7) {
+                const invertHash = ((mapX * 31 + mapY * 47 + Math.floor(texPos * 10)) >>> 0) % 100;
+                if (invertHash < Math.floor((depthFactor - 0.7) * 100)) {
+                  tr = 255 - tr; tg = 255 - tg; tb = 255 - tb;
+                }
+              }
             } else {
               tr = 55; tg = 52; tb = 48;
             }
@@ -2282,10 +2319,7 @@ export default function CorridorView() {
           // Apply side shading and fog (blend toward dark wall color, not black)
           const sideMult = side === 1 ? 0.7 : 1.0;
           // Wall evolution — subtle color shift every 60 seconds
-          // Environment evolves with time AND distance from spawn
           const timeShift = Math.floor(now / 60000);
-          const distFromSpawn = Math.abs(posX - 5.5) + Math.abs(posY - 5.5);
-          const depthFactor = Math.min(1, distFromSpawn / 30); // 0 at spawn, 1 at 30+ tiles away
           // Subtle wall color shift over time — NOT aggressive, just barely noticeable
           const evolveR = Math.sin(timeShift * 0.7) * 4 - depthFactor * 3;
           const evolveG = Math.sin(timeShift * 1.1) * 3 - depthFactor * 2;
@@ -2429,9 +2463,18 @@ export default function CorridorView() {
           const lightHash = ((Math.floor(worldX) * 73 + Math.floor(worldY) * 137) >>> 0) % 100;
           if (lightHash > 65) continue; // 35% of lights are dead
 
-          // Flicker
+          // Flicker — more erratic at depth
           const flickerVal = Math.sin(now / (250 + lightHash * 30) + lightHash);
           if (flickerVal < -0.7) continue; // flickering off
+
+          // Depth-based light brightness
+          const ceilDepthFromSpawn = Math.sqrt((posX - 5.5) ** 2 + (posY - 5.5) ** 2);
+          const ceilDepthFactor = Math.min(1, ceilDepthFromSpawn / 50);
+          const lightBrightness = ceilDepthFactor < 0.3
+            ? 0.5  // normal
+            : ceilDepthFactor < 0.6
+              ? 0.7 + Math.sin(now / 2000) * 0.2  // pulsing brighter — unsettling
+              : 0.3 + Math.sin(now / 1000 + posX) * 0.5; // wild fluctuation
 
           // Transform to camera space
           const relX = worldX - camX;
@@ -2452,18 +2495,19 @@ export default function CorridorView() {
           // Skip if off screen
           if (screenX < -lightW || screenX > w + lightW) continue;
 
-          // Distance fade
-          const fade = Math.max(0.1, 1 - tyf / 12);
+          // Distance fade modulated by depth brightness
+          const fade = Math.max(0.1, 1 - tyf / 12) * Math.max(0.1, lightBrightness);
 
           // Light fixture
-          ctx.fillStyle = `rgba(200, 210, 230, ${0.5 * fade})`;
+          ctx.fillStyle = `rgba(200, 210, 230, ${Math.min(1, 0.5 * fade * (lightBrightness / 0.5))})`;
           ctx.fillRect(screenX - lightW / 2, screenY, lightW, lightH);
 
-          // Light cone downward
+          // Light cone downward — intensity varies with depth
           const coneH = Math.floor(h * 0.15 / tyf);
           if (coneH > 3) {
+            const coneAlpha = Math.min(0.15, 0.03 * fade * (lightBrightness / 0.5));
             const grad = ctx.createLinearGradient(screenX, screenY + lightH, screenX, screenY + lightH + coneH);
-            grad.addColorStop(0, `rgba(180, 190, 210, ${0.03 * fade})`);
+            grad.addColorStop(0, `rgba(180, 190, 210, ${coneAlpha})`);
             grad.addColorStop(1, "rgba(180, 190, 210, 0)");
             ctx.fillStyle = grad;
             ctx.beginPath();

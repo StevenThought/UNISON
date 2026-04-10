@@ -118,6 +118,16 @@ const FOUND_NOTES: Record<string, string> = {
   "70,45": "the deeper i go the colder it gets...",
   "45,70": "i found something. a door. it was not there before.",
   "65,65": "there is no end to this place. it goes on forever.",
+  "8,25": "the light here is different. brighter. wrong bright.",
+  "25,8": "i keep finding photographs. whose photographs are these. whose family.",
+  "38,38": "the walls are taller here. i did not notice when they changed.",
+  "55,15": "i found something that looks like me. it was on the wall. but wrong.",
+  "15,55": "the deeper i go the more the images change. they are watching me through the photographs.",
+  "62,35": "there are no shadows here. everything is lit but there is no source. where is the light coming from.",
+  "35,25": "i counted the corridors. 47. or was it 48. i need to write these down.",
+  "48,48": "the floor is different here. softer. like it absorbs sound.",
+  "25,62": "i found writing that looks like mine. but i did not write it. i am certain i did not write it.",
+  "58,58": "something is following me. not behind me. inside the walls. moving when i move.",
 };
 
 const SYSTEM = `You are MIKE.
