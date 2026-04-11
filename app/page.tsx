@@ -267,6 +267,63 @@ function describeSurroundings(x: number, y: number): { text: string; directions:
   return { text: lines.join("\n"), directions: dirDists };
 }
 
+// Distorted AI voice — speaks MIKE's words aloud
+function speakDistorted(text: string, actx: AudioContext) {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+
+  // Cancel any existing speech
+  window.speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 0.7; // slow — deliberate, wrong
+  utterance.pitch = 0.3; // very low — inhuman
+  utterance.volume = 0.4; // not too loud
+
+  // Try to pick a robotic/male voice
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = voices.find(v =>
+    v.name.toLowerCase().includes('male') ||
+    v.name.toLowerCase().includes('david') ||
+    v.name.toLowerCase().includes('daniel') ||
+    v.name.toLowerCase().includes('google')
+  );
+  if (preferred) utterance.voice = preferred;
+
+  // Add digital distortion overlay while speaking
+  utterance.onstart = () => {
+    // Create a low rumble/static that plays alongside the voice
+    const noise = actx.createBufferSource();
+    const bufSize = actx.sampleRate * 2;
+    const buf = actx.createBuffer(1, bufSize, actx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * 0.015; // very quiet static
+    }
+    noise.buffer = buf;
+    noise.loop = true;
+
+    const noiseFilter = actx.createBiquadFilter();
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.value = 200;
+    noiseFilter.Q.value = 2;
+
+    const noiseGain = actx.createGain();
+    noiseGain.gain.value = 0.08;
+
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(actx.destination);
+    noise.start();
+
+    utterance.onend = () => {
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.3);
+      setTimeout(() => noise.stop(), 400);
+    };
+  };
+
+  window.speechSynthesis.speak(utterance);
+}
+
 // Animal Crossing style speech beep — one per character, creepy/low pitched
 function playSpeechBeep(actx: AudioContext, charCode: number) {
   // Pitch varies by character — lower, more unsettling than Animal Crossing
@@ -395,6 +452,11 @@ export default function CorridorView() {
         setSpeech(fullText);
         setDisplayedSpeech("");
         setSpeechVisible(true);
+
+        // Speak aloud with distorted AI voice
+        if (audioCtxRef.current) {
+          speakDistorted(fullText, audioCtxRef.current);
+        }
 
         // Typewriter effect — one character at a time with speech beep
         let charIdx = 0;
