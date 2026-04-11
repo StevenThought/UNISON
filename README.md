@@ -10,6 +10,8 @@ This project exists to show that AI can be more than just a tool that makes smal
 
 **[Watch Live](https://unisoncorridor.com)** | **[Read the Lore](https://unisoncorridor.com/lore)**
 
+**$UNISON**: `6wKPrUVqKhRMo2PVRtDdNnLN15jf6jMCs47MAHmTrfTS`
+
 ---
 
 ## What is The UNISON?
